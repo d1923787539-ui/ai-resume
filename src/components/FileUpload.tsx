@@ -5,22 +5,36 @@ interface Props { onAnalyze: (analysis: any, text: string, fileName: string) => 
 export default function FileUpload({ onAnalyze }: Props) {
   const [dragOver, setDragOver] = useState(false); const [file, setFile] = useState<File | null>(null)
   const [parsing, setParsing] = useState(false); const inputRef = useRef<HTMLInputElement>(null)
+  
   const handleFile = useCallback(async (f: File) => {
     const ext = f.name.split(".").pop()?.toLowerCase()
     if (!["pdf", "docx", "txt"].includes(ext || "")) { alert("Please upload PDF, DOCX or TXT"); return }
     setFile(f)
   }, [])
+  
   const handleDrop = useCallback((e: React.DragEvent) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f) }, [handleFile])
+  
   const handleSubmit = async () => {
     if (!file) return; setParsing(true)
-    const fd = new FormData(); fd.append("file", file)
     try {
-      const res = await fetch("/api/analyze", { method: "POST", body: fd })
+      // Read file as binary and convert to base64
+      const buffer = await file.arrayBuffer()
+      const uint8 = new Uint8Array(buffer)
+      let binary = ""
+      for (let i = 0; i < uint8.length; i++) { binary += String.fromCharCode(uint8[i]) }
+      const base64 = btoa(binary)
+      
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileContent: base64, fileName: file.name }),
+      })
       const data = await res.json()
       if (!res.ok || data.error) { alert(data.error || "Failed"); setParsing(false); return }
       onAnalyze(data.analysis, data.analysis?.rawText || "", file.name)
-    } catch { alert("Failed to parse") } finally { setParsing(false) }
+    } catch { alert("Failed to process file") } finally { setParsing(false) }
   }
+  
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div onDrop={handleDrop} onDragOver={(e: React.DragEvent) => { e.preventDefault(); setDragOver(true) }} onDragLeave={(e: React.DragEvent) => { e.preventDefault(); setDragOver(false) }} onClick={() => inputRef.current?.click()}
