@@ -1,0 +1,37 @@
+﻿# Dependencies
+node_modules/
+.pnpm/
+npm-debug.log*
+
+# Next.js build output
+.next/
+out/
+
+# Environment
+.env.local
+.env*.local
+
+# User data
+data/
+
+# Temp files
+tmp/
+*.tmp
+
+# Python helper scripts
+gen_*.py
+fix_*.py
+__helper.py
+__*.py
+__*.txt
+
+# Test files
+test_*.py
+test_*.txt
+server_*.js
+upload_test.txt
+server_log.txt
+
+# OS
+.DS_Store
+Thumbs.db
