@@ -7,30 +7,36 @@ import crypto from "crypto"
 
 export async function POST(request: NextRequest) {
   try {
-    const contentType = request.headers.get("content-type") || ""
-    if (contentType.includes("multipart/form-data")) {
-      const formData = await request.formData()
-      const file = formData.get("file") as File | null
-      if (!file) return NextResponse.json({ error: "No file uploaded" }, { status: 400 })
-      const ext = path.extname(file.name).toLowerCase()
-      if (![".pdf", ".docx", ".txt"].includes(ext)) return NextResponse.json({ error: "Unsupported format" }, { status: 400 })
+    const body = await request.json()
+    const { fileContent, fileName, text } = body
+
+    // Case 1: Base64-encoded file upload (from browser)
+    if (fileContent) {
+      const buffer = Buffer.from(fileContent, "base64")
+      const ext = path.extname(fileName || "file.txt").toLowerCase()
       const tmpDir = path.join(process.cwd(), "tmp")
       if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
       const tmpPath = path.join(tmpDir, crypto.randomUUID() + ext)
-      const buffer = Buffer.from(await file.arrayBuffer())
       fs.writeFileSync(tmpPath, buffer)
+
       try {
-        const text = await parseResume(tmpPath)
-        const analysis = await analyzeResume(text)
-        analysis.fileName = file.name; analysis.rawText = text
+        const parsedText = await parseResume(tmpPath)
+        const analysis = await analyzeResume(parsedText)
+        analysis.fileName = fileName || "resume.txt"
+        analysis.rawText = parsedText
         return NextResponse.json({ analysis })
-      } finally { if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath) }
+      } finally {
+        if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath)
+      }
     }
-    const body = await request.json()
-    const { text, fileName } = body
-    if (!text || text.trim().length < 10) return NextResponse.json({ error: "Resume content too short" }, { status: 400 })
+
+    // Case 2: Direct text input
+    if (!text || text.trim().length < 10) {
+      return NextResponse.json({ error: "Resume content too short" }, { status: 400 })
+    }
     const analysis = await analyzeResume(text)
-    analysis.fileName = fileName || "resume.txt"; analysis.rawText = text
+    analysis.fileName = fileName || "resume.txt"
+    analysis.rawText = text
     return NextResponse.json({ analysis })
   } catch (error) {
     console.error("Analysis error:", error)
