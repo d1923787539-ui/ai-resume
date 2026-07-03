@@ -10,14 +10,14 @@ export async function parseResume(filePath: string): Promise<string> {
 }
 
 async function parsePDF(filePath: string): Promise<string> {
-  const pdfParse = require("pdf-parse")
+  const pdfParse = (await import("pdf-parse")).default
   const buffer = fs.readFileSync(filePath)
   const data = await pdfParse(buffer)
   return data.text
 }
 
 async function parseDOCX(filePath: string): Promise<string> {
-  const mammoth = require("mammoth")
+  const mammoth = (await import("mammoth")).default
   const buffer = fs.readFileSync(filePath)
   const result = await mammoth.extractRawText({ buffer })
   return result.value
